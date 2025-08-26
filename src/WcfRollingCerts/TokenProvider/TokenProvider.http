@@ -1,0 +1,6 @@
+@TokenProvider_HostAddress = http://localhost:5128
+
+GET {{TokenProvider_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
