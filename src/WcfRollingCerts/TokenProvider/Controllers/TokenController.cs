@@ -106,8 +106,8 @@ public class TokenController : ControllerBase
             var latestPfx = pfxFiles[0];
             _logger.LogInformation("Using certificate: {CertPath}", latestPfx);
 
-            // Load certificate with password (using empty password for demo)
-            var certificate = new X509Certificate2(latestPfx, "", X509KeyStorageFlags.Exportable);
+            // Load certificate with password (matching the script-generated certificates)
+            var certificate = new X509Certificate2(latestPfx, "P@ssw0rd123", X509KeyStorageFlags.Exportable);
             return certificate;
         }
         catch (Exception ex)
@@ -130,7 +130,7 @@ public class TokenController : ControllerBase
         {
             try
             {
-                var cert = new X509Certificate2(pfxFile, "", X509KeyStorageFlags.Exportable);
+                var cert = new X509Certificate2(pfxFile, "P@ssw0rd123", X509KeyStorageFlags.Exportable);
                 certificates.Add(cert);
             }
             catch (Exception ex)

@@ -50,7 +50,6 @@
     <Compile Include="IWcfService.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="RollingCertificateSecurityTokenManager.cs" />
     <Compile Include="WcfService.cs" />
   </ItemGroup>
   <ItemGroup>

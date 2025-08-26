@@ -17,30 +17,9 @@ namespace Server
 
             try
             {
-                // Configure the service with custom security token manager for rolling certificates
-                var serviceCredentials = host.Credentials;
-                
-                // Load a certificate for the service identity (this can be any of the trusted certificates)
-                var certificatesPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "certificates");
-                if (Directory.Exists(certificatesPath))
-                {
-                    var certFiles = Directory.GetFiles(certificatesPath, "*.pfx");
-                    if (certFiles.Length > 0)
-                    {
-                        var serviceCert = new X509Certificate2(certFiles[0], ""); // For demo, using empty password
-                        serviceCredentials.ServiceCertificate.Certificate = serviceCert;
-                        Console.WriteLine($"Service identity certificate: {serviceCert.Subject}");
-                    }
-                }
-
-                // Set up custom security token manager for rolling certificate support
-                serviceCredentials.SecurityTokenManager = new RollingCertificateSecurityTokenManager(serviceCredentials);
-
-                // Configure message security mode
-                var binding = new WSHttpBinding();
-                binding.Security.Mode = SecurityMode.Message;
-                binding.Security.Message.ClientCredentialType = MessageCredentialType.None;
-                binding.Security.Message.EstablishSecurityContext = false;
+                // Use basic HTTP binding with message-level custom security
+                var binding = new BasicHttpBinding();
+                binding.Security.Mode = BasicHttpSecurityMode.None; // We handle security through SAML tokens in headers
                 
                 // Add endpoint
                 var baseAddress = "http://localhost:8080/WcfService";
@@ -48,7 +27,8 @@ namespace Server
 
                 Console.WriteLine($"Service endpoint: {baseAddress}");
                 Console.WriteLine("Waiting for client connections...");
-                Console.WriteLine("Rolling certificate support enabled - server accepts tokens from any trusted certificate");
+                Console.WriteLine("Rolling certificate support enabled - server accepts SAML tokens from any trusted certificate");
+                Console.WriteLine("SAML tokens are validated against certificates in the 'certificates' directory");
                 Console.WriteLine("Press any key to stop the service.");
 
                 host.Open();
