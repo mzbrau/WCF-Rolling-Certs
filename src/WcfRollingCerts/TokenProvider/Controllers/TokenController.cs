@@ -4,6 +4,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using TokenProvider.Services;
 
 namespace TokenProvider.Controllers;
 
@@ -13,11 +14,13 @@ public class TokenController : ControllerBase
 {
     private readonly ILogger<TokenController> _logger;
     private readonly string _certificatesPath;
+    private readonly SamlTokenCreator _samlTokenCreator;
 
     public TokenController(ILogger<TokenController> logger)
     {
         _logger = logger;
         _certificatesPath = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "certificates");
+        _samlTokenCreator = new SamlTokenCreator();
     }
 
     [HttpPost("login")]
@@ -34,20 +37,20 @@ public class TokenController : ControllerBase
                 return BadRequest("No certificates available");
             }
 
-            // Create JWT token with SAML-like claims
+            // Create SAML token
             var tokenId = Guid.NewGuid().ToString();
-            var jwtToken = CreateJwtToken(request.Username, certificate, tokenId);
+            var samlToken = _samlTokenCreator.CreateSamlToken(request.Username, certificate, tokenId);
 
             var response = new TokenResponse
             {
-                Token = jwtToken,
+                Token = samlToken,
                 TokenId = tokenId,
                 ExpiresAt = DateTime.UtcNow.AddHours(1),
                 CertificateThumbprint = certificate.Thumbprint,
                 IssuedAt = DateTime.UtcNow
             };
 
-            _logger.LogInformation("Token issued successfully. TokenId: {TokenId}, Certificate: {Thumbprint}", 
+            _logger.LogInformation("SAML token issued successfully. TokenId: {TokenId}, Certificate: {Thumbprint}", 
                 tokenId, certificate.Thumbprint);
 
             return Ok(response);
@@ -103,8 +106,8 @@ public class TokenController : ControllerBase
             var latestPfx = pfxFiles[0];
             _logger.LogInformation("Using certificate: {CertPath}", latestPfx);
 
-            // Load certificate with password
-            var certificate = new X509Certificate2(latestPfx, "P@ssw0rd123", X509KeyStorageFlags.Exportable);
+            // Load certificate with password (using empty password for demo)
+            var certificate = new X509Certificate2(latestPfx, "", X509KeyStorageFlags.Exportable);
             return certificate;
         }
         catch (Exception ex)
@@ -127,7 +130,7 @@ public class TokenController : ControllerBase
         {
             try
             {
-                var cert = new X509Certificate2(pfxFile, "P@ssw0rd123", X509KeyStorageFlags.Exportable);
+                var cert = new X509Certificate2(pfxFile, "", X509KeyStorageFlags.Exportable);
                 certificates.Add(cert);
             }
             catch (Exception ex)
@@ -137,39 +140,6 @@ public class TokenController : ControllerBase
         }
 
         return certificates.OrderByDescending(c => c.NotBefore).ToList();
-    }
-
-    private string CreateJwtToken(string username, X509Certificate2 certificate, string tokenId)
-    {
-        // Create claims (SAML-like claims in JWT format)
-        var claims = new List<Claim>
-        {
-            new Claim(ClaimTypes.Name, username),
-            new Claim(ClaimTypes.NameIdentifier, username),
-            new Claim("TokenId", tokenId),
-            new Claim("CertificateThumbprint", certificate.Thumbprint),
-            new Claim("TokenType", "SAML-Like-JWT"),
-            new Claim(JwtRegisteredClaimNames.Jti, tokenId),
-            new Claim(JwtRegisteredClaimNames.Iat, new DateTimeOffset(DateTime.UtcNow).ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64)
-        };
-
-        // Create signing credentials using the certificate
-        var key = new X509SecurityKey(certificate);
-        var signingCredentials = new SigningCredentials(key, SecurityAlgorithms.RsaSha256Signature);
-
-        // Create JWT token
-        var tokenDescriptor = new SecurityTokenDescriptor
-        {
-            Subject = new ClaimsIdentity(claims),
-            Expires = DateTime.UtcNow.AddHours(1),
-            Issuer = $"TokenProvider_{Environment.MachineName}",
-            Audience = "WcfRollingCerts",
-            SigningCredentials = signingCredentials
-        };
-
-        var tokenHandler = new JwtSecurityTokenHandler();
-        var token = tokenHandler.CreateToken(tokenDescriptor);
-        return tokenHandler.WriteToken(token);
     }
 }
 
