@@ -12,13 +12,15 @@ public class SamlTokenCreator
         var now = DateTime.UtcNow;
         var expiry = now.AddHours(1);
 
-        // Create SAML assertion XML
+        // Create SAML assertion XML with proper ID structure
         var doc = new XmlDocument();
-        doc.LoadXml($@"
+        doc.PreserveWhitespace = false;
+        
+        var xmlStr = $@"<?xml version=""1.0"" encoding=""UTF-8""?>
 <saml:Assertion 
     xmlns:saml=""urn:oasis:names:tc:SAML:2.0:assertion""
     xmlns:ds=""http://www.w3.org/2000/09/xmldsig#""
-    ID=""{tokenId}""
+    ID=""_{tokenId}""
     Version=""2.0""
     IssueInstant=""{now:yyyy-MM-ddTHH:mm:ssZ}"">
     
@@ -54,15 +56,18 @@ public class SamlTokenCreator
             <saml:AttributeValue>{tokenId}</saml:AttributeValue>
         </saml:Attribute>
     </saml:AttributeStatement>
-</saml:Assertion>");
+</saml:Assertion>";
+
+        doc.LoadXml(xmlStr);
 
         // Sign the assertion
         var signedXml = new SignedXml(doc);
         signedXml.SigningKey = signingCertificate.GetRSAPrivateKey();
         
-        // Create reference to the assertion
-        var reference = new Reference($"#{tokenId}");
+        // Create reference to the assertion with the proper ID
+        var reference = new Reference($"#_{tokenId}");
         reference.AddTransform(new XmlDsigEnvelopedSignatureTransform());
+        reference.AddTransform(new XmlDsigC14NTransform());
         signedXml.AddReference(reference);
         
         // Add key info
@@ -73,13 +78,19 @@ public class SamlTokenCreator
         // Compute signature
         signedXml.ComputeSignature();
         
-        // Insert signature into the assertion
+        // Insert signature into the assertion after the Issuer element
         var signatureElement = signedXml.GetXml();
         var assertionElement = doc.DocumentElement!;
         
-        // Insert signature after Issuer element
         var issuerElement = assertionElement.SelectSingleNode("saml:Issuer", GetNamespaceManager(doc));
-        assertionElement.InsertAfter(signatureElement, issuerElement);
+        if (issuerElement?.NextSibling != null)
+        {
+            assertionElement.InsertAfter(signatureElement, issuerElement);
+        }
+        else
+        {
+            assertionElement.AppendChild(signatureElement);
+        }
         
         return doc.OuterXml;
     }

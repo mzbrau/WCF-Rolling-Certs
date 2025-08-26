@@ -21,7 +21,7 @@ namespace Client
     {
         private string _currentSamlToken = null;
         private readonly HttpClient _httpClient;
-        private const string TOKEN_PROVIDER_URL = "http://localhost:5000/api/token/login";
+        private const string TOKEN_PROVIDER_URL = "http://localhost:5128/api/token/login";
         private const string WCF_SERVICE_URL = "http://localhost:8080/WcfService";
 
         public MainWindow()
