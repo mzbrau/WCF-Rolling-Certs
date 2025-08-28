@@ -2,15 +2,12 @@
 using System.Net.Http;
 using System.ServiceModel;
 using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
-using System.IdentityModel.Tokens;
-using System.ServiceModel.Security;
-using System.Security.Cryptography.X509Certificates;
-using System.Xml;
 using System.Runtime.Serialization.Json;
 using System.IO;
 using System.Runtime.Serialization;
+using System.ServiceModel.Channels;
+using Newtonsoft.Json;
 
 namespace Client
 {
@@ -48,12 +45,16 @@ namespace Client
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
 
                 var response = await _httpClient.PostAsync(TOKEN_PROVIDER_URL, content);
-                
+
+                TokenResponse? tokenResponse = null;
                 if (response.IsSuccessStatusCode)
                 {
                     var responseJson = await response.Content.ReadAsStringAsync();
-                    var tokenResponse = DeserializeFromJson<TokenResponse>(responseJson);
-                    
+                    tokenResponse = JsonConvert.DeserializeObject<TokenResponse>(responseJson);
+                }
+
+                if (tokenResponse?.Token != null)
+                {
                     _currentSamlToken = tokenResponse.Token;
                     
                     lblAuthStatus.Text = $"Authenticated (Certificate: {tokenResponse.CertificateThumbprint.Substring(0, 8)}...)";

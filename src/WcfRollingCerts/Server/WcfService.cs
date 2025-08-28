@@ -146,7 +146,7 @@ namespace Server
         private List<X509Certificate2> LoadTrustedCertificates()
         {
             var certificates = new List<X509Certificate2>();
-            var certificatesPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "certificates");
+            var certificatesPath = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "certificates");
 
             if (Directory.Exists(certificatesPath))
             {
