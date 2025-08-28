@@ -64,10 +64,13 @@ public class SamlTokenCreator
         var signedXml = new SignedXml(doc);
         signedXml.SigningKey = signingCertificate.GetRSAPrivateKey();
         
+        // Set the canonicalization method for SignedInfo
+        signedXml.SignedInfo.CanonicalizationMethod = SignedXml.XmlDsigExcC14NTransformUrl;
+        
         // Create reference to the assertion with the proper ID
         var reference = new Reference($"#_{tokenId}");
         reference.AddTransform(new XmlDsigEnvelopedSignatureTransform());
-        reference.AddTransform(new XmlDsigC14NTransform());
+        reference.AddTransform(new XmlDsigExcC14NTransform());
         signedXml.AddReference(reference);
         
         // Add key info
