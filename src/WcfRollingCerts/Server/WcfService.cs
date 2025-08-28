@@ -27,126 +27,53 @@ namespace Server
         {
             try
             {
-                // Extract SAML token from message headers
-                var samlToken = ExtractSamlTokenFromHeaders();
-                
-                if (string.IsNullOrEmpty(samlToken))
+                // With federation binding, the SAML token is automatically processed by WCF
+                // We can access the security context and claims directly
+                var context = OperationContext.Current;
+                if (context?.ServiceSecurityContext?.AuthorizationContext != null)
                 {
-                    throw new SecurityAccessDeniedException("SAML token not found in message headers");
+                    LogMessage("Processing authenticated request with federation binding");
+                    LogMessage($"Identity: {context.ServiceSecurityContext.PrimaryIdentity?.Name ?? "Unknown"}");
+                    LogMessage($"Authentication Type: {context.ServiceSecurityContext.PrimaryIdentity?.AuthenticationType ?? "Unknown"}");
+                    
+                    // Log claims from the SAML token
+                    foreach (var claimSet in context.ServiceSecurityContext.AuthorizationContext.ClaimSets)
+                    {
+                        LogMessage($"ClaimSet Issuer: {claimSet.Issuer}");
+                        foreach (var claim in claimSet)
+                        {
+                            LogMessage($"Claim Type: {claim.ClaimType}, Value: {claim.Resource}");
+                        }
+                    }
+                }
+                else
+                {
+                    LogMessage("No security context found - authentication may have failed");
                 }
 
-                // Validate the SAML token
-                ValidateSamlToken(samlToken);
-
-                // Log authentication details
-                Console.WriteLine($"[{DateTime.Now}] Processing authenticated request: {request}");
-                Console.WriteLine($"[{DateTime.Now}] SAML token validated successfully");
-
                 // Process the request
+                LogMessage($"Processing request: {request}");
                 var response = $"Secure response to: {request} (processed at {DateTime.Now})";
-                Console.WriteLine($"[{DateTime.Now}] Returning response: {response}");
+                LogMessage($"Returning response: {response}");
                 
                 return response;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[{DateTime.Now}] Error processing request: {ex.Message}");
+                LogMessage($"Error processing request: {ex.Message}");
                 throw;
             }
         }
 
-        private string ExtractSamlTokenFromHeaders()
+        private void LogMessage(string message)
         {
-            var context = OperationContext.Current;
-            if (context?.IncomingMessageHeaders == null)
-                return null;
-
-            // Look for SAML token in message headers
-            var headerIndex = context.IncomingMessageHeaders.FindHeader("SamlToken", "http://schemas.wcf.rolling.certs");
-            if (headerIndex >= 0)
-            {
-                return context.IncomingMessageHeaders.GetHeader<string>(headerIndex);
-            }
-
-            return null;
-        }
-
-        private void ValidateSamlToken(string samlTokenXml)
-        {
-            try
-            {
-                var doc = new XmlDocument();
-                doc.LoadXml(samlTokenXml);
-
-                // Extract certificate thumbprint from attributes
-                var thumbprintNode = doc.SelectSingleNode("//saml:Attribute[@Name='CertificateThumbprint']/saml:AttributeValue", GetNamespaceManager(doc));
-                if (thumbprintNode == null)
-                {
-                    throw new SecurityTokenValidationException("Certificate thumbprint not found in SAML token");
-                }
-
-                var certThumbprint = thumbprintNode.InnerText;
-                Console.WriteLine($"[{DateTime.Now}] Token claims certificate thumbprint: {certThumbprint}");
-
-                // Find matching trusted certificate
-                var trustedCert = _trustedCertificates.FirstOrDefault(c => 
-                    c.Thumbprint.Equals(certThumbprint, StringComparison.OrdinalIgnoreCase));
-
-                if (trustedCert == null)
-                {
-                    throw new SecurityTokenValidationException($"Certificate with thumbprint {certThumbprint} is not trusted");
-                }
-
-                // Verify the signature
-                var signedXml = new SignedXml(doc);
-                var signatureNode = doc.SelectSingleNode("//ds:Signature", GetNamespaceManager(doc));
-                if (signatureNode == null)
-                {
-                    throw new SecurityTokenValidationException("No signature found in SAML token");
-                }
-
-                signedXml.LoadXml((XmlElement)signatureNode);
-                
-                if (!signedXml.CheckSignature(trustedCert, true))
-                {
-                    throw new SecurityTokenValidationException("SAML token signature validation failed");
-                }
-
-                // Check expiration
-                var conditionsNode = doc.SelectSingleNode("//saml:Conditions", GetNamespaceManager(doc));
-                if (conditionsNode != null)
-                {
-                    var notOnOrAfter = conditionsNode.Attributes["NotOnOrAfter"]?.Value;
-                    if (!string.IsNullOrEmpty(notOnOrAfter))
-                    {
-                        if (DateTime.Parse(notOnOrAfter).ToUniversalTime() < DateTime.UtcNow)
-                        {
-                            throw new SecurityTokenValidationException("SAML token has expired");
-                        }
-                    }
-                }
-
-                Console.WriteLine($"[{DateTime.Now}] SAML token validated successfully with certificate: {trustedCert.Thumbprint}");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[{DateTime.Now}] SAML token validation failed: {ex.Message}");
-                throw new SecurityTokenValidationException($"SAML token validation failed: {ex.Message}");
-            }
-        }
-
-        private XmlNamespaceManager GetNamespaceManager(XmlDocument doc)
-        {
-            var nsmgr = new XmlNamespaceManager(doc.NameTable);
-            nsmgr.AddNamespace("saml", "urn:oasis:names:tc:SAML:2.0:assertion");
-            nsmgr.AddNamespace("ds", "http://www.w3.org/2000/09/xmldsig#");
-            return nsmgr;
+            Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {message}");
         }
 
         private List<X509Certificate2> LoadTrustedCertificates()
         {
             var certificates = new List<X509Certificate2>();
-            var certificatesPath = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "certificates");
+            var certificatesPath = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "..", "certificates");
 
             if (Directory.Exists(certificatesPath))
             {
@@ -157,17 +84,17 @@ namespace Server
                     {
                         var cert = new X509Certificate2(certFile, "P@ssw0rd123");
                         certificates.Add(cert);
-                        Console.WriteLine($"[{DateTime.Now}] Loaded trusted certificate: {cert.Subject} (Thumbprint: {cert.Thumbprint})");
+                        LogMessage($"Loaded trusted certificate: {cert.Subject} (Thumbprint: {cert.Thumbprint})");
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"[{DateTime.Now}] Failed to load certificate {certFile}: {ex.Message}");
+                        LogMessage($"Failed to load certificate {certFile}: {ex.Message}");
                     }
                 }
             }
             else
             {
-                Console.WriteLine($"[{DateTime.Now}] Certificates directory not found: {certificatesPath}");
+                LogMessage($"Certificates directory not found: {certificatesPath}");
             }
 
             return certificates;

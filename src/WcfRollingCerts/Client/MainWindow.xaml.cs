@@ -8,6 +8,9 @@ using System.IO;
 using System.Runtime.Serialization;
 using System.ServiceModel.Channels;
 using Newtonsoft.Json;
+using System.IdentityModel.Tokens;
+using System.ServiceModel.Security;
+using System.Xml;
 
 namespace Client
 {
@@ -19,13 +22,28 @@ namespace Client
         private string _currentSamlToken = null;
         private readonly HttpClient _httpClient;
         private const string TOKEN_PROVIDER_URL = "http://localhost:5128/api/token/login";
-        private const string WCF_SERVICE_URL = "http://localhost:8080/WcfService";
+        private ChannelFactory<IWcfService> _channelFactory;
 
         public MainWindow()
         {
             InitializeComponent();
             _httpClient = new HttpClient();
+            InitializeChannelFactory();
             LogMessage("Application started");
+        }
+
+        private void InitializeChannelFactory()
+        {
+            try
+            {
+                // Create channel factory using configuration from app.config
+                _channelFactory = new ChannelFactory<IWcfService>("WcfServiceEndpoint");
+                LogMessage("Channel factory initialized with FederatedSecurityBinding");
+            }
+            catch (Exception ex)
+            {
+                LogMessage($"Error initializing channel factory: {ex.Message}");
+            }
         }
 
         private async void BtnLogin_Click(object sender, RoutedEventArgs e)
@@ -94,39 +112,23 @@ namespace Client
             try
             {
                 btnCallService.IsEnabled = false;
-                LogMessage("Calling WCF service with SAML token...");
+                LogMessage("Calling WCF service with SAML token using CreateChannelWithIssuedToken...");
 
-                // Create WCF client with basic HTTP binding (security handled through SAML token in headers)
-                var binding = new BasicHttpBinding();
-                binding.Security.Mode = BasicHttpSecurityMode.None;
-
-                var endpoint = new EndpointAddress(WCF_SERVICE_URL);
+                // Convert SAML token to SecurityToken
+                var samlSecurityToken = CreateSamlSecurityToken(_currentSamlToken);
                 
-                using (var factory = new ChannelFactory<IWcfService>(binding, endpoint))
-                {
-                    // Configure the channel to use SAML token
-                    factory.Credentials.SupportInteractive = false;
-                    
-                    // Create channel and call service
-                    var channel = factory.CreateChannel();
-                    
-                    // Use custom message headers to send SAML token
-                    using (var scope = new OperationContextScope((IContextChannel)channel))
-                    {
-                        // Add SAML token to message headers
-                        var header = MessageHeader.CreateHeader("SamlToken", "http://schemas.wcf.rolling.certs", _currentSamlToken);
-                        OperationContext.Current.OutgoingMessageHeaders.Add(header);
+                // Create channel with issued token using federation binding
+                var endpoint = new EndpointAddress("http://localhost:8080/WcfService");
+                var channel = _channelFactory.CreateChannelWithIssuedToken(samlSecurityToken, endpoint);
 
-                        LogMessage($"Sending request: {txtRequest.Text}");
-                        
-                        var response = channel.GetSecureData(txtRequest.Text);
-                        
-                        txtResponse.Text = response;
-                        LogMessage($"Service response received: {response}");
-                    }
-                    
-                    ((IClientChannel)channel).Close();
-                }
+                LogMessage($"Sending request: {txtRequest.Text}");
+                
+                var response = channel.GetSecureData(txtRequest.Text);
+                
+                txtResponse.Text = response;
+                LogMessage($"Service response received: {response}");
+                
+                ((IClientChannel)channel).Close();
             }
             catch (Exception ex)
             {
@@ -136,6 +138,27 @@ namespace Client
             finally
             {
                 btnCallService.IsEnabled = true;
+            }
+        }
+
+        private SecurityToken CreateSamlSecurityToken(string samlXml)
+        {
+            try
+            {
+                var doc = new XmlDocument();
+                doc.LoadXml(samlXml);
+                
+                // Create SAML security token from XML
+                var reader = new XmlNodeReader(doc.DocumentElement);
+                var tokenHandlers = SecurityTokenHandlerCollection.CreateDefaultSecurityTokenHandlerCollection();
+                var token = tokenHandlers.ReadToken(reader);
+                
+                return token;
+            }
+            catch (Exception ex)
+            {
+                LogMessage($"Error creating SAML security token: {ex.Message}");
+                throw;
             }
         }
 
@@ -178,6 +201,7 @@ namespace Client
         protected override void OnClosed(EventArgs e)
         {
             _httpClient?.Dispose();
+            _channelFactory?.Close();
             base.OnClosed(e);
         }
     }

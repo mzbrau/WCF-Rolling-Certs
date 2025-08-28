@@ -1,8 +1,5 @@
 ﻿using System;
 using System.ServiceModel;
-using System.ServiceModel.Security;
-using System.Security.Cryptography.X509Certificates;
-using System.IO;
 
 namespace Server
 {
@@ -12,26 +9,27 @@ namespace Server
         {
             Console.WriteLine("Starting WCF Rolling Certificates Server...");
 
-            // Create service host
+            // Create service host using configuration from app.config
             var host = new ServiceHost(typeof(WcfService));
 
             try
             {
-                // Use basic HTTP binding with message-level custom security
-                var binding = new BasicHttpBinding();
-                binding.Security.Mode = BasicHttpSecurityMode.None; // We handle security through SAML tokens in headers
-                
-                // Add endpoint
-                var baseAddress = "http://localhost:8080/WcfService";
-                host.AddServiceEndpoint(typeof(IWcfService), binding, baseAddress);
-
-                Console.WriteLine($"Service endpoint: {baseAddress}");
+                Console.WriteLine("Service configured with WS2007FederationHttpBinding");
                 Console.WriteLine("Waiting for client connections...");
                 Console.WriteLine("Rolling certificate support enabled - server accepts SAML tokens from any trusted certificate");
                 Console.WriteLine("SAML tokens are validated against certificates in the 'certificates' directory");
                 Console.WriteLine("Press any key to stop the service.");
 
                 host.Open();
+                
+                Console.WriteLine("Service is running...");
+                foreach (var endpoint in host.Description.Endpoints)
+                {
+                    Console.WriteLine($"Endpoint: {endpoint.Address}");
+                    Console.WriteLine($"Binding: {endpoint.Binding.GetType().Name}");
+                    Console.WriteLine($"Contract: {endpoint.Contract.Name}");
+                }
+                
                 Console.ReadKey();
                 host.Close();
             }
