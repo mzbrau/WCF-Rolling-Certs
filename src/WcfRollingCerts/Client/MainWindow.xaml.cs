@@ -114,12 +114,9 @@ namespace Client
                 btnCallService.IsEnabled = false;
                 LogMessage("Calling WCF service with SAML token using CreateChannelWithIssuedToken...");
 
-                // Convert SAML token to SecurityToken
-                var samlSecurityToken = CreateSamlSecurityToken(_currentSamlToken);
-                
-                // Create channel with issued token using federation binding
+                // Create channel using the pattern requested by user
                 var endpoint = new EndpointAddress("http://localhost:8080/WcfService");
-                var channel = _channelFactory.CreateChannelWithIssuedToken(samlSecurityToken, endpoint);
+                var channel = CreateChannel(endpoint);
 
                 LogMessage($"Sending request: {txtRequest.Text}");
                 
@@ -139,6 +136,33 @@ namespace Client
             {
                 btnCallService.IsEnabled = true;
             }
+        }
+
+        protected IWcfService CreateChannel(EndpointAddress address)
+        {
+            IWcfService channelProxy;
+            try
+            {
+                if (!string.IsNullOrEmpty(_currentSamlToken))
+                {
+                    var currentToken = CreateSamlSecurityToken(_currentSamlToken);
+                    channelProxy = _channelFactory.CreateChannelWithIssuedToken(currentToken, address);
+                    LogMessage("Channel created with issued SAML token");
+                }
+                else
+                {
+                    channelProxy = _channelFactory.CreateChannel(address);
+                    LogMessage("Channel created without token");
+                }
+            }
+            catch (CommunicationObjectFaultedException e)
+            {
+                LogMessage($"Communication object faulted: {e.Message}");
+                throw;
+            }
+
+            ((IClientChannel)channelProxy)?.Open();
+            return channelProxy;
         }
 
         private SecurityToken CreateSamlSecurityToken(string samlXml)

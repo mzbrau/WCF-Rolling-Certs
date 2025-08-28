@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Client"
         mc:Ignorable="d"
-        Title="WCF Rolling Certificates Client" Height="500" Width="800">
+        Title="WCF Rolling Certificates Client" Height="600" Width="900" MinHeight="500" MinWidth="800">
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -20,42 +20,46 @@
         <TextBlock Grid.Row="0" Text="WCF Rolling Certificates Demo Client" FontSize="18" FontWeight="Bold" Margin="0,0,0,20"/>
         
         <!-- Login Section -->
-        <GroupBox Grid.Row="1" Header="Authentication" Margin="0,0,0,10">
-            <StackPanel Margin="10">
+        <GroupBox Grid.Row="1" Header="Authentication" Margin="0,0,0,15">
+            <StackPanel Margin="15">
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                    <Label Content="Username:" Width="80"/>
-                    <TextBox x:Name="txtUsername" Text="testuser" Width="200"/>
-                    <Button x:Name="btnLogin" Content="Get SAML Token" Width="120" Margin="10,0,0,0" Click="BtnLogin_Click"/>
+                    <Label Content="Username:" Width="100" VerticalAlignment="Center"/>
+                    <TextBox x:Name="txtUsername" Text="testuser" Width="300" Height="25" VerticalAlignment="Center"/>
+                    <Button x:Name="btnLogin" Content="Get SAML Token" Width="140" Height="30" Margin="15,0,0,0" Click="BtnLogin_Click"/>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal">
-                    <Label Content="Status:" Width="80"/>
-                    <TextBlock x:Name="lblAuthStatus" Text="Not authenticated" VerticalAlignment="Center"/>
+                    <Label Content="Status:" Width="100" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="lblAuthStatus" Text="Not authenticated" VerticalAlignment="Center" FontWeight="SemiBold"/>
                 </StackPanel>
             </StackPanel>
         </GroupBox>
         
         <!-- Service Call Section -->
-        <GroupBox Grid.Row="2" Header="WCF Service Call" Margin="0,0,0,10">
-            <StackPanel Margin="10">
+        <GroupBox Grid.Row="2" Header="WCF Service Call" Margin="0,0,0,15">
+            <StackPanel Margin="15">
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                    <Label Content="Request:" Width="80"/>
-                    <TextBox x:Name="txtRequest" Text="Hello from WCF client" Width="300"/>
-                    <Button x:Name="btnCallService" Content="Call Service" Width="120" Margin="10,0,0,0" Click="BtnCallService_Click" IsEnabled="False"/>
+                    <Label Content="Request:" Width="100" VerticalAlignment="Center"/>
+                    <TextBox x:Name="txtRequest" Text="Hello from WCF client" Width="400" Height="25" VerticalAlignment="Center"/>
+                    <Button x:Name="btnCallService" Content="Call Service" Width="140" Height="30" Margin="15,0,0,0" Click="BtnCallService_Click" IsEnabled="False"/>
                 </StackPanel>
             </StackPanel>
         </GroupBox>
         
         <!-- Response Section -->
-        <GroupBox Grid.Row="3" Header="Service Response" Margin="0,0,0,10">
-            <TextBox x:Name="txtResponse" Height="60" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"/>
+        <GroupBox Grid.Row="3" Header="Service Response" Margin="0,0,0,15">
+            <TextBox x:Name="txtResponse" Height="80" IsReadOnly="True" TextWrapping="Wrap" 
+                     VerticalScrollBarVisibility="Auto" Padding="5" FontFamily="Consolas"/>
         </GroupBox>
         
         <!-- Log -->
         <GroupBox Grid.Row="4" Header="Activity Log">
-            <TextBox x:Name="txtLog" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" FontFamily="Consolas" FontSize="10"/>
+            <TextBox x:Name="txtLog" IsReadOnly="True" TextWrapping="Wrap" 
+                     VerticalScrollBarVisibility="Auto" FontFamily="Consolas" FontSize="11" 
+                     Padding="5" Background="#F8F8F8"/>
         </GroupBox>
         
         <!-- Clear Log Button -->
-        <Button Grid.Row="5" x:Name="btnClearLog" Content="Clear Log" Width="100" HorizontalAlignment="Right" Margin="0,10,0,0" Click="BtnClearLog_Click"/>
+        <Button Grid.Row="5" x:Name="btnClearLog" Content="Clear Log" Width="120" Height="30" 
+                HorizontalAlignment="Right" Margin="0,15,0,0" Click="BtnClearLog_Click"/>
     </Grid>
 </Window>

@@ -73,9 +73,28 @@ namespace Server
         private List<X509Certificate2> LoadTrustedCertificates()
         {
             var certificates = new List<X509Certificate2>();
-            var certificatesPath = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "..", "certificates");
+            
+            // Try multiple possible certificate paths
+            var possiblePaths = new[]
+            {
+                Path.Combine(Directory.GetCurrentDirectory(), "certificates"),
+                Path.Combine(Directory.GetCurrentDirectory(), "..", "certificates"),
+                Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "certificates"),
+                Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "certificates"),
+                Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "..", "certificates")
+            };
 
-            if (Directory.Exists(certificatesPath))
+            string certificatesPath = null;
+            foreach (var path in possiblePaths)
+            {
+                if (Directory.Exists(path))
+                {
+                    certificatesPath = path;
+                    break;
+                }
+            }
+
+            if (certificatesPath != null)
             {
                 var certFiles = Directory.GetFiles(certificatesPath, "*.pfx");
                 foreach (var certFile in certFiles)
@@ -94,7 +113,11 @@ namespace Server
             }
             else
             {
-                LogMessage($"Certificates directory not found: {certificatesPath}");
+                LogMessage("No certificates directory found. Tried paths:");
+                foreach (var path in possiblePaths)
+                {
+                    LogMessage($"  - {path}");
+                }
             }
 
             return certificates;

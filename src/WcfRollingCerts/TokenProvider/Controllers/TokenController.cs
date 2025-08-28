@@ -4,6 +4,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using System.Linq;
 using TokenProvider.Services;
 
 namespace TokenProvider.Controllers;
@@ -19,8 +20,21 @@ public class TokenController : ControllerBase
     public TokenController(ILogger<TokenController> logger)
     {
         _logger = logger;
-        _certificatesPath = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "certificates");
+        
+        // Try multiple possible certificate paths
+        var possiblePaths = new[]
+        {
+            Path.Combine(Directory.GetCurrentDirectory(), "certificates"),
+            Path.Combine(Directory.GetCurrentDirectory(), "..", "certificates"),
+            Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "certificates"),
+            Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "certificates"),
+            Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "certificates")
+        };
+
+        _certificatesPath = possiblePaths.FirstOrDefault(Directory.Exists) ?? possiblePaths[0];
         _samlTokenCreator = new SamlTokenCreator();
+        
+        _logger.LogInformation("Using certificates path: {Path}", _certificatesPath);
     }
 
     [HttpPost("login")]
