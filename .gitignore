@@ -11,6 +11,14 @@ autom4te.cache/
 tarballs/
 test-results/
 
+# Certificates (sensitive data)
+certificates/
+*.pfx
+*.p12
+*.key
+*.crt
+*.cer
+
 # Mac bundle stuff
 *.dmg
 *.app
